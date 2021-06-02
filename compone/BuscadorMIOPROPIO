@@ -1,0 +1,162 @@
+import React, { FC, useEffect, useState } from "react";
+import { gql, useQuery } from "@apollo/client"
+import axios from "axios"
+const Buscador:FC<{}> = ()=>{
+
+    const [pais, setPais] = useState<string>("");
+    const [ciudad, setCiudad] = useState<string>("");
+
+    const [busquedaPais, setBusquedaPais] = useState<string>("");
+    const [busquedaCiudad, setBusquedaCiudad] = useState<string>("");
+
+    const [verCapital, setVerCapital] = useState<boolean>(false);
+    const [verPais, setVerPais] = useState<boolean>(false);
+    const [visualizar, setVisualizar] = useState<number>(-1);
+
+    const [datos, setDatos] = useState<any>();
+
+    //**************************QUERIES******************************
+
+    const COUNTRIES = gql`
+        query countries($pais:String){
+            countries(where:{name:{eq:$pais}}){
+                name
+                continent{
+                    name
+                }
+                capital{
+                    name
+                    country{
+                        name
+                    }
+                    population
+                    timeZone{
+                        name
+                    }
+                }
+                languages{
+                    name
+                }
+                currencies{
+                    name    
+                }
+                population
+                alpha2Code
+            }
+        }
+    `
+
+    const CITIES = gql`
+        query cities($ciudad:String){
+            cities(where:{name:{eq:$ciudad}}){
+                name
+                population
+                timeZone{
+                    name
+                }
+                country{
+                    name
+                    continent{
+                        name
+                    }
+                    capital{
+                        name
+                    }
+                    languages{
+                        name
+                    }
+                    currencies{
+                        name
+                    }
+                    population
+                    alpha2Code
+
+                }
+            }
+        }
+    `
+
+    
+    
+    //***************************************************************
+
+    const {data, loading, error} = useQuery(COUNTRIES, {
+        variables: {
+            pais: busquedaPais
+        }
+    })
+    const {data:data2, loading:loading2, error:error2} = useQuery(CITIES, {
+        variables: {
+            ciudad: busquedaCiudad
+        }
+    })
+
+    if(loading)return <div>Cargando pais...</div>
+    if(loading2)return <div>Cargando ciudad...</div>
+
+    function bandera(pais:string) {
+        return "https://www.countryflags.io/"+pais+"/flat/64.png";
+    }
+    function temperatura(ciudad:string) {
+         axios.get("https://api.openweathermap.org/data/2.5/weather?q="+ciudad+"&appid=b7e7557bb7a92e06c900eed263193df1").then(results=>{
+            setDatos(results);
+         })
+         console.log(datos)
+    }
+
+    return(
+        <div>
+            <input type="text" value={pais} placeholder="Pais" onChange={(e)=>{setPais(e.target.value); setCiudad("")}} />
+            <input type="text" value={ciudad} placeholder="Ciudad" onChange={(e)=>{setCiudad(e.target.value); setPais("")}}/>
+
+            <button onClick={()=>{setBusquedaPais(pais); setBusquedaCiudad(ciudad); setVisualizar(-1)}}>Buscar</button>
+
+            <div>{busquedaCiudad==="" && data?.countries?.map((e:any, key:any)=><button  onClick={()=>{setVisualizar(key)}}>{e?.name}</button>)}</div>
+            <div>{busquedaPais==="" && data2?.cities?.map((e:any, key:any)=><button  onClick={()=>{setVisualizar(key)}}>{e?.country?.name}: {e?.name}</button>)}</div>
+
+            {data?.countries?.length>0 && <div>
+                {visualizar!=-1 && data?.countries?.map((e:any)=><div>
+                    <div><b>Continente: </b>{e?.continent?.name}</div>                    
+                    <div><b>Idiomas: </b>{e?.languages?.map((a:any, key:any)=><div><b>{key}</b>: {a?.name}</div>)}</div>
+                    <div><b>Poblacion: </b>{e?.population}</div>
+                    <div><b>Monedas: </b>{e?.currencies?.map((a:any, key:any)=><div><b>{key}</b>: {a?.name}</div>)}</div>
+                    <div>Temperatura Actual: {temperatura(e?.capital?.name)}{datos?.main.temp-273}</div>
+                    <img src={bandera(e?.alpha2Code)}/>
+                    <button onClick={()=>{setVerCapital(!verCapital)}}>Capital: {e?.capital?.name}</button>
+                    {verCapital && <div>
+                        <div><b>Pais: </b>{e?.capital?.country?.name}</div>
+                        <img src={bandera(e?.alpha2Code)}/>
+                        <div><b>Poblacion: </b>{e?.capital?.population}</div>
+                        <div><b>Franja Horaria: </b>{e?.capital?.timeZone?.name}</div>
+                    </div>}
+
+                </div>)}
+            </div>}
+
+            {data2?.cities?.length>0 && <div>
+
+                {visualizar!=-1 && data2?.cities?.map((e:any, key:any)=><div>
+                    
+                    {visualizar===key && <div>
+
+                        <div>Poblacion: {e?.population}</div> 
+                        <div>Franja Horario: {e?.timeZone?.name}</div>
+                        <img src={bandera(e?.country?.alpha2Code)}/>
+                        <button onClick={()=>{setVerPais(!verPais)}}>Pais: {e?.country?.name}</button>  
+                        {verPais && <div>
+                            <div>Continente: {e?.continent?.name}</div>
+                            <div>Capital: {e?.country?.capital?.name}</div>
+                            <div>Idiomas: {e?.country?.languages?.map((a:any, key2:any)=><div>{key2}: {a?.name}</div>)}</div>
+                            <div>Monedas: {e?.country?.currencies?.map((a:any,key2:any)=><div>{key2}: {a?.name}</div>)}</div>
+                            <img src={bandera(e?.country?.alpha2Code)}/>
+                        </div>}
+                    </div>}
+                    
+                </div>)}    
+            </div>}
+            
+        </div>
+    )
+}
+
+export default Buscador
