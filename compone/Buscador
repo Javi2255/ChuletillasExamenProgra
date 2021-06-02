@@ -1,0 +1,220 @@
+import react, { FC, useState, useEffect } from "react"
+import { gql, useQuery } from "@apollo/client"
+import axios from "axios"
+import styled from 'styled-components'
+const countries = gql`
+    query countries($name:String){
+        countries(where:{name:{eq:$name}}){
+            name
+            alpha2Code
+            capital{
+                name
+                country{
+                    name
+                }
+                population
+                timeZone{
+                    name
+                }
+            
+            }
+            languages{
+                name
+            }
+            currencies{
+                name
+            }
+            continent{
+            name
+          }
+            
+            population
+        
+    }
+}`
+const cities = gql`
+query cities($name:String){
+    cities(where:{name:{eq:$name}}){
+        name
+        country{
+            name
+            alpha2Code
+            capital{
+                name
+                country{
+                    name
+                }
+                population
+                timeZone{
+                    name
+                }
+               
+      
+            }
+            languages{
+                name
+            }
+            currencies{
+                name
+            }
+            population
+            continent{
+                    name
+            }
+        }
+  
+        population
+        timeZone{
+            name
+        }
+    }   
+
+}`
+
+
+const Buscador: FC = () => {
+    const [pais, setPais] = useState<string>("")
+    const [pais2, setPais2] = useState<string>("")
+    const [ciudad, setCiudad] = useState<string>("")
+    const [ciudad2, setCiudad2] = useState<string>("")
+    const [verCiudad, setVerCiudad] = useState<boolean>(false)
+    const [verCiudad2, setVerCiudad2] = useState<boolean>(false)
+    const [tiempo, setTiempo] = useState<number>()
+    const [descripcion, setDescrpcion] = useState<string>("")
+
+    const [verPais, setVerPais] = useState<boolean>(false)
+    const [llave, setllave] = useState<boolean>(false)
+
+    const { loading, error, data } = useQuery(countries, { variables: { name: pais2 } })
+    const { loading: loading2, error: error2, data: data2 } = useQuery(cities, { variables: { name: ciudad2 } })
+
+    if (loading || loading2) return <div>Molestando</div>
+    if (error || error2) return <div>Error</div>
+    function imagen(id: string) {
+        return "https://www.countryflags.io/" + id + "/flat/64.png"
+    }
+    function temperatura(nombre:string){
+
+        axios.get(`http://api.openweathermap.org/data/2.5/weather?q=${nombre}&appid=763e87997951cca4709b867316760c0e`).then(results=>{
+            setTiempo(results.data.main.temp-273)
+            console.log("asd")
+
+        })
+
+    }
+    function descripcionTiempo(nombre:string){
+        console.log("asd")
+        axios.get(`http://api.openweathermap.org/data/2.5/weather?q=${nombre}&appid=763e87997951cca4709b867316760c0e`).then(results=>{
+            setDescrpcion(results.data.weather[0].description)
+
+        })
+
+    }
+    return (
+        <div>
+            <input type="text" placeholder="pais" onChange={(e: any) => { setPais(e.target.value); setCiudad("") }} />
+            <input type="text" placeholder="ciudad" onChange={(e: any) => { setCiudad(e.target.value); setPais("") }} />
+            <Button last={data.countries?.length > 0} onClick={() => { setPais2(pais); setCiudad2(ciudad) }}>Buscar</Button>
+            {data.countries?.length > 0 &&
+                <div>
+                    {
+                        data.countries?.map((e: any) =>
+                            <div>
+                                 <div>Name: {e.name}</div>
+                                 <div><img src={imagen(e.alpha2Code)} /></div>
+                                <button onClick={() => { setVerCiudad(!verCiudad) }}>Capital: {e.capital?.name}</button>
+                                <div>{verCiudad &&
+                                    <div>
+                                        <div>{e.capital?.population}</div>
+                                        <div>{e.capital?.country?.name}</div>
+                                        <div>{e.capital?.timeZone?.name}</div>
+                                    </div>
+
+                                }</div>
+                                <div>Popolation: {e.population}</div>
+                                <div>Idiomas: {e.languages?.map((d: any, key: any) =>
+                                    <div>
+                                        {key}: {d.name}
+                                    </div>
+                                )}</div>
+                                <div>Moneda: {e.currencies?.map((d: any, key: any) =>
+                                    <div>
+                                        {key}: {d.name}
+                                    </div>
+                                )}</div>
+                                <div>Continente: {e.continent?.name}</div>
+                                <div>Temperatura Ciudad: {temperatura(e.capital?.name)}{tiempo} ºC</div>
+                                <div>Descripcion Ciudad: {descripcionTiempo(e.capital?.name)}{descripcion}</div>
+                            </div>
+                            
+                        )
+                    }
+                </div>
+            }
+
+
+
+            {data2.cities?.length > 0 &&
+                <div>
+                    {
+                        data2.cities?.map((e: any, key: any) =>
+                            <div>
+                                <div>Name: {e.name}</div>
+                                <button onClick={() => { setVerPais(!verPais); setllave(key) }}>Pais: {e.country?.name}</button>
+                                <div><img src={imagen(e.country?.alpha2Code)} /></div>
+
+                                {verPais && key === llave &&
+                                    <div>
+                                        <button onClick={() => { setVerCiudad2(!verCiudad2) }}>Capital: {e.country?.capital?.name}</button>
+
+                                        {verCiudad2 &&
+                                            <div>
+                                                <div>Poblacion: {e.country?.capital?.population}</div>
+                                                <div>Pais: {e.country?.capital?.country?.name}</div>
+                                                <div>Zona horaria: {e.country?.capital?.timeZone?.name}</div>
+                                                
+                                            </div>
+
+                                        }
+                                        <div>Popolation: {e.country?.population}</div>
+                                        <div>Idiomas: {e.country?.languages.map((d: any, key: any) =>
+                                            <div>
+                                                {key}: {d.name}
+                                            </div>
+                                        )}</div>
+                                        <div>Moneda: {e.country?.currencies?.map((d: any, key: any) =>
+                                            <div>
+                                                {key}: {d.name}
+                                            </div>
+                                        )}</div>
+                                        <div>Continente: {e.country?.continent?.name}</div>
+                                    </div>
+
+                                }
+                                <div>Popolation: {e.population}</div>
+                                <div>Zona Horaria: {e.timeZone?.name}</div>
+                                <div>Temperatura Ciudad: {temperatura(e.name)}{tiempo} ºC</div>
+                                <div>Descripcion Ciudad: {descripcionTiempo(e.name)}{descripcion}</div>
+                            </div>
+                        )
+                    }
+                </div>
+            }
+        </div>
+    )
+}
+
+export default Buscador
+function color(l:boolean){
+    if(l){
+        return "red"
+
+    }else{
+        return "white"
+
+    }
+}
+const Button =styled.button<{last: boolean}>`
+    background-color: ${(p)=>{return color(p.last)}}
+    
+`
